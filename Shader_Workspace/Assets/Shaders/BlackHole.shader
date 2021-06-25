@@ -11,7 +11,6 @@ Shader "MyURP/BlackHole"
         _DopplerBeamingFactor ("Doppler beaming effect factor", float) = 66
         _HueRadius ("Hue shift start radius", Range(0,1)) = 0.75
         _HueShiftFactor ("Hue shifting factor", float) = -0.03
-        _Steps ("Amount of steps", int) = 256
         _StepSize ("Step size", Range(0.001, 1)) = 0.1
         _SSRadius ("Object relative Schwarzschild radius", Range(0,1)) = 0.2
         _GConst ("Gravitational constant", float) = 0.15
@@ -76,7 +75,6 @@ Shader "MyURP/BlackHole"
                 float _DopplerBeamingFactor;
                 float _HueRadius;
                 float _HueShiftFactor;
-                int _Steps;
                 float _StepSize;
                 float _SSRadius;
                 float _GConst;
@@ -84,7 +82,8 @@ Shader "MyURP/BlackHole"
 
             #include "Assets/Shaders/MathFunctions.hlsl"
             #include "Assets/Shaders/ColorFunctions.hlsl"
-
+            
+            // 円盤の色を計算する
             float3 discColor(float3 baseColor, float3 planarDiscPos, float3 discDir, float3 cameraPos, float u, float radius)
             {
                 float3 newColor = baseColor;
@@ -135,12 +134,13 @@ Shader "MyURP/BlackHole"
                 // レイが引力範囲の球体と交差があったら
                 if(outerSphereIntersection.x < maxFloat)
                 {
-                    for (int i = 0; i < _Steps; i++)
+                    for (;;)
                     {
                         float3 dirToCenter = IN.center-currentRayPos;
                         float dstToCenter = length(dirToCenter);
                         dirToCenter /= dstToCenter;
-                
+
+                        // 引力範囲から出たら循環を抜ける
                         if(dstToCenter > sphereRadius + _StepSize)
                         {
                             break;
@@ -166,7 +166,6 @@ Shader "MyURP/BlackHole"
                         {
                             transmittance = 1;
                             samplePos = currentRayPos + currentRayDir * discDst;
-                            break;
                         }
                     }
                 }
@@ -195,7 +194,7 @@ Shader "MyURP/BlackHole"
                 float t = saturate(remap(outerSphereIntersection.y, sphereRadius, 2 * sphereRadius, 0, 1)) * edgeFadex * edgeFadey;
                 distortedScreenUV = lerp(screenUV, distortedScreenUV, t);
 
-                // screenUV
+                // 背景をサンプリングする
                 float3 backgroundCol = SampleSceneColor(distortedScreenUV) * (1 - blackHoleMask);
 
                 float3 discCol = discColor(_DiscColor.rgb, planarDiscPos, discDir, _WorldSpaceCameraPos, uv.x, discRadius);
